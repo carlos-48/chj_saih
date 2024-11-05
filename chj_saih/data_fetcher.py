@@ -1,4 +1,5 @@
 import requests
+from geopy.distance import geodesic
 from .config import BASE_URL_STATION_LIST, API_URL
 
 def fetch_station_list(sensor_type):
@@ -135,3 +136,58 @@ def fetch_stations_by_risk(sensor_type, risk_level, comparison="equal"):
                 filtered_stations.extend([station for station in stations if station["estadoInt"] >= risk_level])
 
     return filtered_stations
+
+def fetch_station_list_by_location(sensor_type, lat, lon, radius_km):
+    """
+    Obtiene una lista de estaciones de un tipo específico ubicadas dentro de un radio en kilómetros de una ubicación dada.
+    
+    Parámetros:
+        sensor_type (str): Tipo de sensor ("t", "a", "p", "e" o "all").
+        lat (float): Latitud de la ubicación central.
+        lon (float): Longitud de la ubicación central.
+        radius_km (float): Radio en kilómetros.
+
+    Retorna:
+        dict: Diccionario de estaciones dentro del radio especificado, ordenadas por nombre.
+    """
+    # Validación del tipo de sensor
+    valid_sensor_types = {"t", "a", "p", "e", "all"}
+    if sensor_type not in valid_sensor_types:
+        raise ValueError(f"Tipo de sensor no válido: {sensor_type}")
+
+    stations = []
+    if sensor_type == "all":
+        sensor_types = ["t", "a", "p", "e"]
+    else:
+        sensor_types = [sensor_type]
+
+    # Realiza la consulta para cada tipo de sensor y filtra por ubicación
+    central_location = (lat, lon)
+    for s_type in sensor_types:
+        try:
+            response = requests.get(f"{BASE_URL_STATION_LIST}?t={s_type}&id=")
+            response.raise_for_status()
+            data = response.json()
+            for station in data:
+                station_location = (station["latitud"], station["longitud"])
+                distance = geodesic(central_location, station_location).kilometers
+                if distance <= radius_km:
+                    stations.append({
+                        "id": station["id"],
+                        "lat": station["latitud"],
+                        "lon": station["longitud"],
+                        "name": station["nombre"],
+                        "var": station["variable"],
+                        "unit": station["unidades"],
+                        "subcuenca": station.get("subcuenca"),
+                        "estado": station.get("estado"),
+                        "estadoInternal": station.get("estadoInternal"),
+                        "estadoInt": station.get("estadoInt")
+                    })
+        except requests.exceptions.RequestException as e:
+            print(f"Error al obtener la lista de estaciones para el tipo '{s_type}': {e}")
+    
+    # Ordena las estaciones alfabéticamente por el campo "name"
+    stations_sorted = sorted(stations, key=lambda x: x["name"])
+    
+    return stations_sorted
