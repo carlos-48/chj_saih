@@ -1,0 +1,3 @@
+En este archivo hay información para hacer pruebas internas. Hay veces que el listado de estaciones no devuelve algunas variables, porque la estación está offline o por otros motivos.
+
+Variable para el Aforo del Barranc del Poyo: 0O04DQG0MVVR
