@@ -86,3 +86,52 @@ def fetch_sensor_data(variable, period_grouping, num_values):
     except requests.exceptions.RequestException as e:
         print(f"Error al obtener datos del sensor: {e}")
         return None
+
+def fetch_stations_by_risk(sensor_type, risk_level, comparison="equal"):
+    """
+    Obtiene estaciones de un tipo específico o de todos los tipos que cumplan con un nivel
+    de riesgo especificado, según el tipo de comparación (igual a o mayor o igual que).
+    
+    Parámetros:
+        sensor_type (str): Tipo de sensor ('a' para aforos, 't' para temperatura,
+                           'e' para embalses, 'p' para pluviómetros, 'all' para todos).
+        risk_level (int): Nivel de riesgo como un valor entero (0: desconocido, 1: verde,
+                          2: amarillo, 3: rojo).
+        comparison (str): Tipo de comparación, puede ser "equal" o "greater_equal".
+    
+    Retorna:
+        list: Lista de estaciones que cumplen con el criterio de riesgo.
+    """
+    # Validar el tipo de sensor
+    valid_sensor_types = ['a', 't', 'e', 'p', 'all']
+    if sensor_type not in valid_sensor_types:
+        print(f"Error: Tipo de sensor '{sensor_type}' no válido. Use uno de {valid_sensor_types}.")
+        return []
+
+    # Validar el nivel de riesgo
+    if not isinstance(risk_level, int) or risk_level < 0 or risk_level > 3:
+        print("Error: Nivel de riesgo no válido. Debe ser un entero entre 0 y 3.")
+        return []
+
+    # Validar el tipo de comparación
+    if comparison not in ["equal", "greater_equal"]:
+        print("Error: Tipo de comparación no reconocido. Use 'equal' o 'greater_equal'.")
+        return []
+
+    # Obtener estaciones según el tipo de sensor
+    if sensor_type == "all":
+        sensor_types = ['a', 't', 'e', 'p']
+    else:
+        sensor_types = [sensor_type]
+
+    filtered_stations = []
+    for st in sensor_types:
+        stations = fetch_station_list(st)
+        if stations:
+            # Filtrar estaciones según el nivel de riesgo y el tipo de comparación
+            if comparison == "equal":
+                filtered_stations.extend([station for station in stations if station["estadoInt"] == risk_level])
+            elif comparison == "greater_equal":
+                filtered_stations.extend([station for station in stations if station["estadoInt"] >= risk_level])
+
+    return filtered_stations
