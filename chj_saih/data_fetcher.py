@@ -67,13 +67,13 @@ def fetch_all_stations():
     
     return all_stations
 
-def fetch_sensor_data(variable, period_grouping, num_values):
+def fetch_sensor_data(variable, period_grouping="ultimos5minutales", num_values=30):
     """
     Obtiene datos del sensor desde la API.
     
     Args:
         variable (str): Identificador del sensor.
-        period_grouping (str): Agrupación temporal (ej. 'ultimos5minutales', 'ultimashoras').
+        period_grouping (str): Agrupación temporal (ej. 'ultimos5minutales', 'ultimashoras').(completar com todas las opciones)
         num_values (int): Número de valores a obtener.
     
     Returns:
@@ -88,7 +88,7 @@ def fetch_sensor_data(variable, period_grouping, num_values):
         print(f"Error al obtener datos del sensor: {e}")
         return None
 
-def fetch_stations_by_risk(sensor_type, risk_level, comparison="equal"):
+def fetch_stations_by_risk(sensor_type="e", risk_level=2, comparison="greater_equal"):
     """
     Obtiene estaciones de un tipo específico o de todos los tipos que cumplan con un nivel
     de riesgo especificado, según el tipo de comparación (igual a o mayor o igual que).
@@ -137,7 +137,7 @@ def fetch_stations_by_risk(sensor_type, risk_level, comparison="equal"):
 
     return filtered_stations
 
-def fetch_station_list_by_location(sensor_type, lat, lon, radius_km):
+def fetch_station_list_by_location(sensor_type="all", lat, lon, radius_km=50):
     """
     Obtiene una lista de estaciones de un tipo específico ubicadas dentro de un radio en kilómetros de una ubicación dada.
     
