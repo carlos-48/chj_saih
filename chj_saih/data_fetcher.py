@@ -191,3 +191,44 @@ def fetch_station_list_by_location(sensor_type, lat, lon, radius_km):
     stations_sorted = sorted(stations, key=lambda x: x["name"])
     
     return stations_sorted
+
+def fetch_stations_by_subcuenca(subcuenca_id, sensor_type="all"):
+    """
+    Obtiene una lista de estaciones en una subcuenca específica, opcionalmente filtrada por tipo de sensor.
+
+    Args:
+        subcuenca_id (int): El ID de la subcuenca (0 a 11). (Pendiente de actualizar con los nombres de cada subcuenca)
+        sensor_type (str): Tipo de sensor ('t', 'a', 'p', 'e', o 'all' para todos los tipos).
+
+    Returns:
+        list: Lista de estaciones en la subcuenca especificada.
+    """
+    # Validar el tipo de sensor
+    if sensor_type not in ["t", "a", "p", "e", "all"]:
+        raise ValueError("Tipo de sensor inválido. Utilice 't', 'a', 'p', 'e' o 'all'.")
+
+    stations = []
+
+    # Si sensor_type es 'all', consultar cada tipo de sensor
+    sensor_types = [sensor_type] if sensor_type != "all" else ["t", "a", "p", "e"]
+
+    for stype in sensor_types:
+        try:
+            response = requests.get(f"{BASE_URL_STATION_LIST}?t={stype}&id=")
+            response.raise_for_status()
+            data = response.json()
+
+            # Filtrar estaciones por subcuenca
+            filtered_stations = [
+                station for station in data if station.get("subcuenca") == subcuenca_id
+            ]
+
+            stations.extend(filtered_stations)
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error al obtener estaciones para el tipo '{stype}': {e}")
+
+    # Ordenar estaciones alfabéticamente por nombre
+    stations.sort(key=lambda station: station.get("nombre", "").lower())
+    
+    return stations
