@@ -137,7 +137,7 @@ def fetch_stations_by_risk(sensor_type="e", risk_level=2, comparison="greater_eq
 
     return filtered_stations
 
-def fetch_station_list_by_location(sensor_type="all", lat, lon, radius_km=50):
+def fetch_station_list_by_location(lat, lon, sensor_type="all", radius_km=50):
     """
     Obtiene una lista de estaciones de un tipo específico ubicadas dentro de un radio en kilómetros de una ubicación dada.
     
