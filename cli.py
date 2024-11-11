@@ -1,6 +1,6 @@
 import argparse
 from chj_saih.sensors import RainGaugeSensor, FlowSensor, ReservoirSensor, TemperatureSensor
-from chj_saih.data_fetcher import fetch_station_list
+from chj_saih.data_fetcher import fetch_all_stations
 
 def main():
     parser = argparse.ArgumentParser(description="Herramienta CLI para interactuar con sensores")
@@ -13,7 +13,7 @@ def main():
     args = parser.parse_args()
 
     if args.action == "list_stations":
-        stations = fetch_station_list()
+        stations = fetch_all_stations()
         for station in stations:
             print(f"ID: {station['id']}, Nombre: {station['name']}, Variable: {station['variable']}, Ubicación: ({station['lat']}, {station['lon']})")
     elif args.action == "get_data":

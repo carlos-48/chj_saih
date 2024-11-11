@@ -24,7 +24,7 @@ class TestSensors(unittest.TestCase):
         self.assertIsNotNone(data)
 
     def test_station_list(self):
-        stations = fetch_station_list()
+        stations = fetch_station_list("a")
         self.assertGreater(len(stations), 0)
 
 if __name__ == "__main__":

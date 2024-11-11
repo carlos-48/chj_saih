@@ -2,7 +2,7 @@ import requests
 from geopy.distance import geodesic
 from .config import BASE_URL_STATION_LIST, API_URL
 
-def fetch_station_list(sensor_type):
+def fetch_station_list(sensor_type: str):
     """
     Obtiene la lista de estaciones de acuerdo al tipo de sensor especificado,
     y ordena la lista alfabéticamente por el campo 'nombre'.
@@ -67,13 +67,13 @@ def fetch_all_stations():
     
     return all_stations
 
-def fetch_sensor_data(variable, period_grouping="ultimos5minutales", num_values=30):
+def fetch_sensor_data(variable: str, period_grouping: str = "ultimos5minutales", num_values:int = 30):
     """
     Obtiene datos del sensor desde la API.
     
     Args:
         variable (str): Identificador del sensor.
-        period_grouping (str): Agrupación temporal (ej. 'ultimos5minutales', 'ultimashoras').(completar com todas las opciones)
+        period_grouping (str): Agrupación temporal (ej. 'ultimos5minutales', 'ultimashoras' (8h), 'ultimashorasaforo' (solo para aforos, 8h, valores medios horarios), 'ultimodia' (24h, valores medios horarios), 'ultimasemana' (valores medios horarios), 'ultimomes', 'ultimoanno').
         num_values (int): Número de valores a obtener.
     
     Returns:
@@ -88,7 +88,7 @@ def fetch_sensor_data(variable, period_grouping="ultimos5minutales", num_values=
         print(f"Error al obtener datos del sensor: {e}")
         return None
 
-def fetch_stations_by_risk(sensor_type="e", risk_level=2, comparison="greater_equal"):
+def fetch_stations_by_risk(sensor_type: str = "e", risk_level:int = 2, comparison: str = "greater_equal"):
     """
     Obtiene estaciones de un tipo específico o de todos los tipos que cumplan con un nivel
     de riesgo especificado, según el tipo de comparación (igual a o mayor o igual que).
@@ -137,7 +137,7 @@ def fetch_stations_by_risk(sensor_type="e", risk_level=2, comparison="greater_eq
 
     return filtered_stations
 
-def fetch_station_list_by_location(lat, lon, sensor_type="all", radius_km=50):
+def fetch_station_list_by_location(lat: float, lon: float, sensor_type: str = "all", radius_km: float = 50.0):
     """
     Obtiene una lista de estaciones de un tipo específico ubicadas dentro de un radio en kilómetros de una ubicación dada.
     
@@ -192,7 +192,7 @@ def fetch_station_list_by_location(lat, lon, sensor_type="all", radius_km=50):
     
     return stations_sorted
 
-def fetch_stations_by_subcuenca(subcuenca_id, sensor_type="all"):
+def fetch_stations_by_subcuenca(subcuenca_id: int, sensor_type: str = "all"):
     """
     Obtiene una lista de estaciones en una subcuenca específica, opcionalmente filtrada por tipo de sensor.
 
