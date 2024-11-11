@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="chj-saih",
+    name="chj_saih",
     version="0.1",
     packages=find_packages(),
     install_requires=["requests"],
