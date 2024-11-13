@@ -9,6 +9,26 @@
             "type": "debugpy",
             "request": "launch",
             "module": "chj_saih"
+        },
+        {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
+            "module": "chj_saih",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "/chj_saih/chj_saih"
+            }
+        },
+        {
+            "name": "Python: File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "/chj_saih/chj_saih"
+            }
         }
     ]
 }
