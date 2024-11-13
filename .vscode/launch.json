@@ -17,7 +17,7 @@
             "module": "chj_saih",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "/chj_saih/chj_saih"
+                "PYTHONPATH": "/chj-saih/chj_saih"
             }
         },
         {
@@ -27,7 +27,7 @@
             "program": "${file}",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "/chj_saih/chj_saih"
+                "PYTHONPATH": "/chj-saih/chj_saih"
             }
         }
     ]
