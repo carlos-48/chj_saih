@@ -16,7 +16,7 @@ setup(
         "Programming Language :: Python :: 3"
     ],
     packages=find_packages(),
-    install_requires=["requests"],
+    install_requires=["requests","geopy"],
     entry_points={
         "console_scripts": [
             "chj_saih-cli = cli:main"
