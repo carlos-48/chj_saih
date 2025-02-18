@@ -1,9 +1,11 @@
-import unittest
+import pytest
+import aiohttp
 from chj_saih.sensors import RainGaugeSensor, FlowSensor, ReservoirSensor, TemperatureSensor
 from chj_saih.data_fetcher import fetch_station_list
 
-class TestSensors(unittest.TestCase):
-    def get_variable_for_sensor_type(self, sensor_type: str) -> str:
+@pytest.mark.asyncio
+class TestSensors:
+    async def get_variable_for_sensor_type(self, sensor_type: str, session: aiohttp.ClientSession) -> str:
         station_type_map = {
             "rain": "a",
             "flow": "a",
@@ -11,11 +13,12 @@ class TestSensors(unittest.TestCase):
             "temperature": "t",
         }
         station_type = station_type_map.get(sensor_type)
-        stations = fetch_station_list(station_type)
-        self.assertGreater(len(stations), 0, f"No stations found for sensor type '{sensor_type}'")
+        stations = await fetch_station_list(station_type, session)
+        assert len(stations) > 0, f"No stations found for sensor type '{sensor_type}'"
         return stations[0]["variable"]
 
-    def test_all_sensor_combinations(self):
+    @pytest.mark.asyncio
+    async def test_all_sensor_combinations(self):
         sensors = {
             "rain": RainGaugeSensor,
             "flow": FlowSensor,
@@ -32,15 +35,10 @@ class TestSensors(unittest.TestCase):
             "ultimoanno"
         ]
 
-        for sensor_type, sensor_class in sensors.items():
-            variable = self.get_variable_for_sensor_type(sensor_type)
-            for period in period_groupings:
-                with self.subTest(sensor_type=sensor_type, period=period):
-                    print(f"Testing {sensor_type} sensor with period '{period}' and variable '{variable}'")
+        async with aiohttp.ClientSession() as session:
+            for sensor_type, sensor_class in sensors.items():
+                variable = await self.get_variable_for_sensor_type(sensor_type, session)
+                for period in period_groupings:
                     sensor = sensor_class(variable, period, 10)
-                    data = sensor.get_data()
-                    self.assertIsNotNone(data)
-                    print(f"Data received: {data}")
-
-if __name__ == "__main__":
-    unittest.main()
+                    data = await sensor.get_data(session)
+                    assert data is not None
