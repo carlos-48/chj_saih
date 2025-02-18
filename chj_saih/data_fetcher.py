@@ -1,107 +1,122 @@
-import requests
+import asyncio
+import aiohttp
 from geopy.distance import geodesic
 from .config import BASE_URL_STATION_LIST, API_URL
 
-def fetch_station_list(sensor_type: str):
+async def fetch_station_list(sensor_type: str, session: aiohttp.ClientSession):
     """
     Obtiene la lista de estaciones de acuerdo al tipo de sensor especificado,
     y ordena la lista alfabéticamente por el campo 'nombre'.
     
-    Parámetros:
+    Args:
         sensor_type (str): Tipo de sensor, puede ser 'a' (aforos), 't' (temperatura),
                            'e' (embalses), o 'p' (pluviómetros).
-    
-    Retorna:
-        list: Lista de estaciones en formato de diccionario con información estructurada,
-              ordenada alfabéticamente por 'nombre'.
+        session (aiohttp.ClientSession): La sesión HTTP para realizar la petición.
+
+    Returns:
+        list: Una lista de diccionarios, donde cada diccionario representa una estación con sus datos (id, latitud, longitud, etc.). Está ordenada alfabéticamente por 'nombre'
+              Retorna None si no se pudo obtener la lista de estaciones.
     """
     url = f"{BASE_URL_STATION_LIST}?t={sensor_type}&id="
-    response = requests.get(url)
-    
-    if response.status_code == 200:
-        stations_data = response.json()
-        stations = []
-        for s in stations_data:
-            station = {
-                "id": s.get("id"),
-                "latitud": s.get("latitud"),
-                "longitud": s.get("longitud"),
-                "nombre": s.get("nombre"),
-                "variable": s.get("variable"),
-                "unidades": s.get("unidades"),
-                "subcuenca": s.get("subcuenca"),
-                "estado": s.get("estado"),
-                "datoActual": s.get("datoActual"),
-                "datoTotal": s.get("datoTotal"),
-                "municipioNombre": s.get("municipioNombre"),
-                "estadoInt": s.get("estadoInt"),
-                "estadoInternal": s.get("estadoInternal")
-            }
-            stations.append(station)
-        
-        # Ordenar la lista de estaciones por el campo 'nombre'
-        stations.sort(key=lambda station: station["nombre"])
-        return stations
-    else:
-        print(f"Error: No se pudo obtener la lista de estaciones. Status code: {response.status_code}")
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            stations_data = await response.json()
+            stations = []
+            for s in stations_data:
+                station = {
+                    "id": s.get("id"),
+                    "latitud": s.get("latitud"),
+                    "longitud": s.get("longitud"),
+                    "nombre": s.get("nombre"),
+                    "variable": s.get("variable"),
+                    "unidades": s.get("unidades"),
+                    "subcuenca": s.get("subcuenca"),
+                    "estado": s.get("estado"),
+                    "datoActual": s.get("datoActual"),
+                    "datoTotal": s.get("datoTotal"),
+                    "municipioNombre": s.get("municipioNombre"),
+                    "estadoInt": s.get("estadoInt"),
+                    "estadoInternal": s.get("estadoInternal")
+                }
+                stations.append(station)
+            stations.sort(key=lambda station: station["nombre"])
+            return stations
+    except aiohttp.ClientResponseError as e:
+        print(f"Error: No se pudo obtener la lista de estaciones. Código de estado: {e.status}")
+        return None
+    except aiohttp.ClientError as e:
+        print(f"Error de cliente: {e}")
         return None
 
-def fetch_all_stations():
+
+async def fetch_all_stations(session: aiohttp.ClientSession):
     """
     Obtiene y combina la lista de todas las estaciones de todos los tipos de sensores,
     y ordena la lista alfabéticamente por el campo 'nombre'.
     
-    Retorna:
-        list: Lista de todas las estaciones, ordenada por 'nombre'.
+    Args:
+        session (aiohttp.ClientSession): La sesión HTTP para realizar las peticiones.
+
+    Returns:
+        list: Una lista de diccionarios ordenada por 'nombre', donde cada diccionario representa una estación con sus datos.
     """
     sensor_types = ['a', 't', 'e', 'p']
     all_stations = []
+    tasks = [fetch_station_list(sensor_type, session) for sensor_type in sensor_types]
+    results = await asyncio.gather(*tasks)
 
-    for sensor_type in sensor_types:
-        stations = fetch_station_list(sensor_type)
+    for stations in results:
         if stations:
             all_stations.extend(stations)
 
-    # Ordenar la lista combinada por el campo 'nombre'
     all_stations.sort(key=lambda station: station["nombre"])
-    
     return all_stations
 
-def fetch_sensor_data(variable: str, period_grouping: str = "ultimos5minutales", num_values:int = 30):
+
+async def fetch_sensor_data(variable: str, period_grouping: str = "ultimos5minutales", num_values: int = 30, session: aiohttp.ClientSession = None):
     """
     Obtiene datos del sensor desde la API.
-    
+
     Args:
-        variable (str): Identificador del sensor.
-        period_grouping (str): Agrupación temporal (ej. 'ultimos5minutales', 'ultimashoras' (8h), 'ultimashorasaforo' (solo para aforos, 8h, valores medios horarios), 'ultimodia' (24h, valores medios horarios), 'ultimasemana' (valores medios horarios), 'ultimomes', 'ultimoanno').
-        num_values (int): Número de valores a obtener.
-    
+        variable (str): La variable del sensor (por ejemplo, 'tmax', 'precipitacion').
+        period_grouping (str, optional): La agrupación del periodo de tiempo. Por defecto es "ultimos5minutales".
+        num_values (int, optional): El número de valores a obtener. Por defecto es 30.
+        session (aiohttp.ClientSession, optional): La sesión HTTP para realizar la petición. Si no se proporciona, se creará una nueva.
+
     Returns:
-        dict: Datos JSON de la respuesta de la API.
+        dict: Un diccionario con los datos del sensor en formato JSON.
+              Retorna None en caso de error al obtener los datos.
     """
     url = f"{API_URL}?v={variable}&t={period_grouping}&d={num_values}"
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.json()
+    except aiohttp.ClientResponseError as e:
         print(f"Error al obtener datos del sensor: {e}")
         return None
+    except aiohttp.ClientError as e:
+        print(f"Error de cliente: {e}")
+        return None
 
-def fetch_stations_by_risk(sensor_type: str = "e", risk_level:int = 2, comparison: str = "greater_equal"):
+
+async def fetch_stations_by_risk(sensor_type: str = "e", risk_level: int = 2, comparison: str = "greater_equal", session: aiohttp.ClientSession = None):
     """
     Obtiene estaciones de un tipo específico o de todos los tipos que cumplan con un nivel
     de riesgo especificado, según el tipo de comparación (igual a o mayor o igual que).
     
-    Parámetros:
-        sensor_type (str): Tipo de sensor ('a' para aforos, 't' para temperatura,
-                           'e' para embalses, 'p' para pluviómetros, 'all' para todos).
-        risk_level (int): Nivel de riesgo como un valor entero (0: desconocido, 1: verde,
-                          2: amarillo, 3: rojo).
-        comparison (str): Tipo de comparación, puede ser "equal" o "greater_equal".
+    Args:
+        sensor_type (str, optional): Tipo de sensor ('a' para aforos, 't' para temperatura,
+                           'e' para embalses, 'p' para pluviómetros, 'all' para todos). Por defecto es 'e'.
+        risk_level (int, optional): Nivel de riesgo como un valor entero (0: desconocido, 1: verde,
+                          2: amarillo, 3: rojo). Por defecto es 2.
+        comparison (str, optional): Tipo de comparación, puede ser "equal" o "greater_equal". Por defecto es 'greater_equal'.
+        session (aiohttp.ClientSession, optional): La sesión HTTP para realizar la petición. Si no se proporciona, se creará una nueva.
     
-    Retorna:
+    Returns:
         list: Lista de estaciones que cumplen con el criterio de riesgo.
+              Retorna una lista vacía si el tipo de sensor o el nivel de riesgo no son válidos.
     """
     # Validar el tipo de sensor
     valid_sensor_types = ['a', 't', 'e', 'p', 'all']
@@ -127,9 +142,9 @@ def fetch_stations_by_risk(sensor_type: str = "e", risk_level:int = 2, compariso
 
     filtered_stations = []
     for st in sensor_types:
-        stations = fetch_station_list(st)
+        stations = await fetch_station_list(st, session)
         if stations:
-            # Filtrar estaciones según el nivel de riesgo y el tipo de comparación
+
             if comparison == "equal":
                 filtered_stations.extend([station for station in stations if station["estadoInt"] == risk_level])
             elif comparison == "greater_equal":
@@ -137,18 +152,19 @@ def fetch_stations_by_risk(sensor_type: str = "e", risk_level:int = 2, compariso
 
     return filtered_stations
 
-def fetch_station_list_by_location(lat: float, lon: float, sensor_type: str = "all", radius_km: float = 50.0):
+async def fetch_station_list_by_location(lat: float, lon: float, sensor_type: str = "all", radius_km: float = 50.0, session: aiohttp.ClientSession = None):
     """
     Obtiene una lista de estaciones de un tipo específico ubicadas dentro de un radio en kilómetros de una ubicación dada.
     
-    Parámetros:
-        sensor_type (str): Tipo de sensor ("t", "a", "p", "e" o "all").
-        lat (float): Latitud de la ubicación central.
-        lon (float): Longitud de la ubicación central.
-        radius_km (float): Radio en kilómetros.
+    Args:
+        lat (float): La latitud de la ubicación central.
+        lon (float): La longitud de la ubicación central.
+        sensor_type (str, optional): El tipo de sensor ('a', 't', 'e', 'p' o 'all'). Por defecto es 'all'.
+        radius_km (float, optional): El radio en kilómetros alrededor de la ubicación central. Por defecto es 50.0.
+        session (aiohttp.ClientSession, optional): La sesión HTTP para realizar la petición. Si no se proporciona, se creará una nueva.
 
-    Retorna:
-        dict: Diccionario de estaciones dentro del radio especificado, ordenadas por nombre.
+    Returns:
+        list: Una lista de estaciones dentro del radio especificado, ordenadas por nombre.
     """
     # Validación del tipo de sensor
     valid_sensor_types = {"t", "a", "p", "e", "all"}
@@ -164,10 +180,10 @@ def fetch_station_list_by_location(lat: float, lon: float, sensor_type: str = "a
     # Realiza la consulta para cada tipo de sensor y filtra por ubicación
     central_location = (lat, lon)
     for s_type in sensor_types:
-        try:
-            response = requests.get(f"{BASE_URL_STATION_LIST}?t={s_type}&id=")
-            response.raise_for_status()
-            data = response.json()
+        try:            
+            async with session.get(f"{BASE_URL_STATION_LIST}?t={s_type}&id=") as response:
+                response.raise_for_status()
+                data = await response.json()
             for station in data:
                 station_location = (station["latitud"], station["longitud"])
                 distance = geodesic(central_location, station_location).kilometers
@@ -184,7 +200,7 @@ def fetch_station_list_by_location(lat: float, lon: float, sensor_type: str = "a
                         "estadoInternal": station.get("estadoInternal"),
                         "estadoInt": station.get("estadoInt")
                     })
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientResponseError as e:
             print(f"Error al obtener la lista de estaciones para el tipo '{s_type}': {e}")
     
     # Ordena las estaciones alfabéticamente por el campo "name"
@@ -192,16 +208,18 @@ def fetch_station_list_by_location(lat: float, lon: float, sensor_type: str = "a
     
     return stations_sorted
 
-def fetch_stations_by_subcuenca(subcuenca_id: int, sensor_type: str = "all"):
+async def fetch_stations_by_subcuenca(subcuenca_id: int, sensor_type: str = "all", session: aiohttp.ClientSession = None):
     """
     Obtiene una lista de estaciones en una subcuenca específica, opcionalmente filtrada por tipo de sensor.
 
     Args:
         subcuenca_id (int): El ID de la subcuenca (0 a 11). (Pendiente de actualizar con los nombres de cada subcuenca)
-        sensor_type (str): Tipo de sensor ('t', 'a', 'p', 'e', o 'all' para todos los tipos).
+        sensor_type (str, optional): Tipo de sensor ('t', 'a', 'p', 'e', o 'all' para todos los tipos). Por defecto es 'all'.
+        session (aiohttp.ClientSession, optional): La sesión HTTP para realizar la petición. Si no se proporciona, se creará una nueva.
 
     Returns:
         list: Lista de estaciones en la subcuenca especificada.
+              Retorna una lista vacía si el tipo de sensor no es válido
     """
     # Validar el tipo de sensor
     if sensor_type not in ["t", "a", "p", "e", "all"]:
@@ -214,21 +232,18 @@ def fetch_stations_by_subcuenca(subcuenca_id: int, sensor_type: str = "all"):
 
     for stype in sensor_types:
         try:
-            response = requests.get(f"{BASE_URL_STATION_LIST}?t={stype}&id=")
-            response.raise_for_status()
-            data = response.json()
-
-            # Filtrar estaciones por subcuenca
-            filtered_stations = [
-                station for station in data if station.get("subcuenca") == subcuenca_id
-            ]
-
-            stations.extend(filtered_stations)
-
-        except requests.exceptions.RequestException as e:
+            async with session.get(f"{BASE_URL_STATION_LIST}?t={stype}&id=") as response:
+                response.raise_for_status()
+                data = await response.json()
+                filtered_stations = [
+                    station for station in data if station.get("subcuenca") == subcuenca_id
+                ]
+                stations.extend(filtered_stations)
+        except aiohttp.ClientResponseError as e:
             print(f"Error al obtener estaciones para el tipo '{stype}': {e}")
 
     # Ordenar estaciones alfabéticamente por nombre
     stations.sort(key=lambda station: station.get("nombre", "").lower())
     
     return stations
+

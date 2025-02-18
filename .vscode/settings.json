@@ -12,5 +12,9 @@
       "-p",
       "test_*.py"
     ],
-    "terminal.integrated.env.windows": {"PYTHONPATH": "./",}
+    "terminal.integrated.env.windows": {
+      "PYTHONPATH": "./",
+    },
+    "IDX.aI.enableInlineCompletion": true,
+    "IDX.aI.enableCodebaseIndexing": true
   }
