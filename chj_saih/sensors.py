@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Tuple, Dict, Any, Union
+import aiohttp
 from chj_saih.data_fetcher import fetch_sensor_data
 
 class SensorDataParser:
@@ -70,8 +71,8 @@ class Sensor:
         self.period_grouping = period_grouping
         self.num_values = num_values
 
-    def get_data(self) -> Union[Dict[str, Any], None]:
-        raw_data = fetch_sensor_data(self.variable, self.period_grouping, self.num_values)
+    async def get_data(self, session: aiohttp.ClientSession) -> Union[Dict[str, Any], None]:
+        raw_data = await fetch_sensor_data(self.variable, self.period_grouping, self.num_values, session)
         return self.parse_data(raw_data) if raw_data else None
 
     def parse_data(self, raw_data: List[Union[Dict[str, Any], List[List[Union[str, float]]], Dict[str, Any]]]) -> Dict[str, Any]:
