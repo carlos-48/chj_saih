@@ -1,8 +1,10 @@
 import argparse
+import asyncio
+import aiohttp
 from chj_saih.sensors import RainGaugeSensor, FlowSensor, ReservoirSensor, TemperatureSensor
 from chj_saih.data_fetcher import fetch_all_stations
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Herramienta CLI para interactuar con sensores")
     parser.add_argument("action", choices=["get_data", "list_stations"], nargs="?", help="Acción a realizar")
     parser.add_argument("--sensor_type", choices=["rain", "flow", "reservoir", "temperature"], help="Tipo de sensor")
@@ -40,27 +42,28 @@ def main():
         num_values = args.num_values
         period_grouping = args.period_grouping
 
-    # Ejecuta la acción basada en los argumentos o la entrada del usuario
-    if action == "list_stations":
-        stations = fetch_all_stations()
-        for station in stations:
-            print(f"ID: {station['id']}, Nombre: {station['nombre']}, Variable: {station['variable']}, Ubicación: ({station['latitud']}, {station['longitud1']})")
-    elif action == "get_data":
-        if not sensor_type or not variable or not num_values or not period_grouping:
-            print("Para obtener datos, debes proporcionar 'sensor_type', 'variable', 'num_values' y 'period_grouping'.")
-            return
+    async with aiohttp.ClientSession() as session:
+        # Ejecuta la acción basada en los argumentos o la entrada del usuario
+        if action == "list_stations":
+            stations = await fetch_all_stations(session)
+            for station in stations:
+                print(f"ID: {station['id']}, Nombre: {station['nombre']}, Variable: {station['variable']}, Ubicación: ({station['latitud']}, {station['longitud']})")
+        elif action == "get_data":
+            if not sensor_type or not variable or not num_values or not period_grouping:
+                print("Para obtener datos, debes proporcionar 'sensor_type', 'variable', 'num_values' y 'period_grouping'.")
+                return
 
-        sensor_map = {
-            "rain": RainGaugeSensor,
-            "flow": FlowSensor,
-            "reservoir": ReservoirSensor,
-            "temperature": TemperatureSensor
-        }
+            sensor_map = {
+                "rain": RainGaugeSensor,
+                "flow": FlowSensor,
+                "reservoir": ReservoirSensor,
+                "temperature": TemperatureSensor
+            }
 
-        sensor_class = sensor_map.get(sensor_type)
-        sensor = sensor_class(variable, period_grouping, num_values)
-        data = sensor.get_data()
-        print(f"Datos obtenidos: {data}")
+            sensor_class = sensor_map.get(sensor_type)
+            sensor = sensor_class(variable, period_grouping, num_values)
+            data = await sensor.get_data(session)
+            print(f"Datos obtenidos: {data}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
