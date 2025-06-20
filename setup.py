@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="chj_saih",
-    version="0.3.0",
+    version="0.2.0",
     author="carlos-48",
     author_email="karloselmaster@gmail.com",
     description="Interface to Confederación Hidrográfica del Júcar to get data from the Automatic Hydrologic Information Sistem (SAIH)",
