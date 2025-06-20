@@ -91,4 +91,40 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+## Pruebas (Testing)
+
+Este proyecto utiliza `pytest` para las pruebas.
+
+### Pruebas Unitarias y de Integración (Mock)
+
+Las pruebas principales se encuentran en `tests/test_chj.py` y utilizan mocks para simular las respuestas de la API. Esto asegura que las pruebas sean rápidas y fiables para la integración continua. Para ejecutar todas las pruebas (incluidas las basadas en mock):
+
+```bash
+python -m pytest
+```
+o simplemente:
+```bash
+pytest
+```
+
+### Pruebas de API en Vivo (Live API Tests)
+
+Además de las pruebas unitarias y de integración basadas en mocks, el proyecto incluye un conjunto de pruebas que interactúan directamente con la API real del SAIH CHJ. Estas pruebas están diseñadas para verificar la funcionalidad de extremo a extremo y se encuentran en `tests/test_live_api.py`.
+
+**Importante:**
+*   Estas pruebas realizan llamadas reales a la red y dependen de la disponibilidad de la API externa.
+*   Ejecútalas con moderación para evitar una carga excesiva en el servicio de la API. No se recomienda ejecutarlas automáticamente en cada commit en CI de forma predeterminada.
+
+Para ejecutar únicamente las pruebas de API en vivo, utiliza el siguiente comando:
+
+```bash
+python -m pytest -m live tests/test_live_api.py
+```
+
+O si `pytest` está en el PATH y `pytest.ini` está configurado para descubrir el marcador `live`:
+
+```bash
+pytest -m live
+```
+
 Nota: no soy desarrollador, es un hobby al que por desgracia le dedico muy poco tiempo. Para agilizar, me he apoyado en IA para generar la estructura del repositorio, a falta de desarrollar mejor el código.

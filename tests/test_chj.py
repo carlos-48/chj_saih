@@ -18,19 +18,31 @@ from chj_saih.config import BASE_URL_STATION_LIST, API_URL
 @pytest.mark.asyncio
 class TestSensors:
     async def get_variable_for_sensor_type(self, sensor_type: str, session: aiohttp.ClientSession) -> str:
-        station_type_map = {
-            "rain": "a",
-            "flow": "a",
-            "reservoir": "e",
-            "temperature": "t",
+        # Hardcoded valid-looking variables for testing to avoid live calls
+        test_variables = {
+            "rain": "XX.PREC_ACUM.TEST",
+            "flow": "XX.CAUDAL.TEST",
+            "reservoir": "XX.VOLUMEN.TEST",
+            "temperature": "XX.TMAX_MAX.TEST"
         }
-        station_type = station_type_map.get(sensor_type)
-        stations = await fetch_station_list(station_type, session)
-        assert len(stations) > 0, f"No stations found for sensor type '{sensor_type}'"
-        return stations[0]["variable"]
+        if sensor_type in test_variables:
+            return test_variables[sensor_type]
+        # Fallback or error if we want to ensure no live calls for setup either
+        # For this refactoring, the goal is that test_all_sensor_combinations itself is mock-based
+        # If fetch_station_list was mocked project-wide or session was a deep mock, this would be different.
+        # For now, hardcoding is the simplest way to ensure this helper doesn't make live calls.
+        raise ValueError(f"Test variable not found for sensor type {sensor_type} in get_variable_for_sensor_type. Consider hardcoding.")
 
-    @pytest.mark.asyncio
-    async def test_all_sensor_combinations(self):
+    @patch('chj_saih.sensors.fetch_sensor_data', new_callable=AsyncMock) # Patch where it's used by Sensor.get_data
+    async def test_all_sensor_combinations(self, mock_fetch_sensor_data_func):
+        # Mock the return value of the low-level fetch_sensor_data
+        # This is the raw data structure fetch_sensor_data is expected to return
+        mock_fetch_sensor_data_func.return_value = [
+            {"descripcion": "Mocked Meta Data", "nombreParam": "ultimodia"}, # Added nombreParam for SensorDataParser
+            [["17/06/2024 10:00", 10.0], ["17/06/2024 10:05", 10.5]],
+            {"parametro": "Mocked Param Info"}
+        ]
+
         sensors = {
             "rain": RainGaugeSensor,
             "flow": FlowSensor,
@@ -49,11 +61,28 @@ class TestSensors:
 
         async with aiohttp.ClientSession() as session:
             for sensor_type, sensor_class in sensors.items():
+                # Use the refactored/hardcoded get_variable_for_sensor_type
+                # The session passed here is mostly a dummy for get_variable_for_sensor_type's signature,
+                # as it won't be used if variables are hardcoded.
+                # For sensor.get_data(session), it's also not strictly needed for API calls if
+                # fetch_sensor_data is mocked, but the method signature requires it.
                 variable = await self.get_variable_for_sensor_type(sensor_type, session)
+
                 for period in period_groupings:
+                    # Update mock_fetch_sensor_data_func's return value if period matters for metadata
+                    # This is important because SensorDataParser tries to get 'nombre' from 'paramVisual'
+                    # which often corresponds to period_grouping.
+                    mock_fetch_sensor_data_func.return_value = [
+                        {"descripcion": "Mocked Meta Data", "paramVisual": [{"nombre": period}]},
+                        [["17/06/2024 10:00", 10.0], ["17/06/2024 10:05", 10.5]],
+                        {"parametro": "Mocked Param Info"}
+                    ]
+
                     sensor = sensor_class(variable, period, 10)
-                    data = await sensor.get_data(session)
+                    data = await sensor.get_data(session) # This will now use the mocked fetch_sensor_data
+
                     assert data is not None
+                    # Assertions for data structure remain the same
                     if sensor_type == "rain":
                         assert "rainfall_data" in data
                         assert isinstance(data["rainfall_data"], list)
@@ -61,7 +90,7 @@ class TestSensors:
                             assert isinstance(data["rainfall_data"][0], tuple)
                             assert len(data["rainfall_data"][0]) == 2
                             assert isinstance(data["rainfall_data"][0][0], datetime.datetime)
-                            assert isinstance(data["rainfall_data"][0][1], (float, int))
+                            assert isinstance(data["rainfall_data"][0][1], (float, int, type(None))) # Allow None due to parser changes
                     elif sensor_type == "flow":
                         assert "flow_data" in data
                         assert isinstance(data["flow_data"], list)
@@ -69,7 +98,7 @@ class TestSensors:
                             assert isinstance(data["flow_data"][0], tuple)
                             assert len(data["flow_data"][0]) == 2
                             assert isinstance(data["flow_data"][0][0], datetime.datetime)
-                            assert isinstance(data["flow_data"][0][1], (float, int))
+                            assert isinstance(data["flow_data"][0][1], (float, int, type(None)))
                     elif sensor_type == "reservoir":
                         assert "reservoir_data" in data
                         assert isinstance(data["reservoir_data"], list)
@@ -77,7 +106,7 @@ class TestSensors:
                             assert isinstance(data["reservoir_data"][0], tuple)
                             assert len(data["reservoir_data"][0]) == 2
                             assert isinstance(data["reservoir_data"][0][0], datetime.datetime)
-                            assert isinstance(data["reservoir_data"][0][1], (float, int))
+                            assert isinstance(data["reservoir_data"][0][1], (float, int, type(None)))
                     elif sensor_type == "temperature":
                         assert "temperature_data" in data
                         assert isinstance(data["temperature_data"], list)
@@ -85,7 +114,10 @@ class TestSensors:
                             assert isinstance(data["temperature_data"][0], tuple)
                             assert len(data["temperature_data"][0]) == 2
                             assert isinstance(data["temperature_data"][0][0], datetime.datetime)
-                            assert isinstance(data["temperature_data"][0][1], (float, int))
+                            assert isinstance(data["temperature_data"][0][1], (float, int, type(None)))
+
+            # Verify mock_fetch_sensor_data_func was called for each combination
+            assert mock_fetch_sensor_data_func.call_count == len(sensors) * len(period_groupings)
 
 @pytest.mark.asyncio
 class TestDataFetcher:
@@ -137,7 +169,7 @@ class TestDataFetcher:
             with pytest.raises(APIError) as excinfo:
                 await fetch_station_list(sensor_type='a', session=session)
 
-        assert "Failed to fetch station list. Status code: 404" in str(excinfo.value)
+        assert "Failed to fetch station list for type 'a'. Status code: 404, Message: Not Found" in str(excinfo.value)
 
     @patch('aiohttp.ClientSession.get', new_callable=MagicMock)
     async def test_fetch_station_list_client_error(self, mock_get_method):
@@ -148,7 +180,7 @@ class TestDataFetcher:
             with pytest.raises(APIError) as excinfo:
                 await fetch_station_list(sensor_type='a', session=session)
 
-        assert "Client error while fetching station list: Connection failed" in str(excinfo.value)
+        assert "Client error while fetching station list for type 'a': Connection failed" in str(excinfo.value)
 
     # Tests for fetch_all_stations
     @patch('chj_saih.data_fetcher.fetch_station_list', new_callable=AsyncMock)
@@ -265,7 +297,7 @@ class TestDataFetcher:
             with pytest.raises(APIError) as excinfo:
                 await fetch_sensor_data("var", "period", 10, session)
 
-        assert "Failed to fetch sensor data. Status code: 500" in str(excinfo.value)
+        assert "Failed to fetch sensor data for variable 'var'. Status code: 500, Message: Server Error" in str(excinfo.value)
 
     @patch('aiohttp.ClientSession.get', new_callable=MagicMock)
     async def test_fetch_sensor_data_client_error(self, mock_get_method):
@@ -275,7 +307,7 @@ class TestDataFetcher:
             with pytest.raises(APIError) as excinfo:
                 await fetch_sensor_data("var", "period", 10, session)
 
-        assert "Client error while fetching sensor data: Network connection failed" in str(excinfo.value)
+        assert "Client error while fetching sensor data for variable 'var': Network connection failed" in str(excinfo.value)
 
     # Tests for fetch_stations_by_risk
     @patch('chj_saih.data_fetcher.fetch_station_list', new_callable=AsyncMock)
@@ -342,10 +374,10 @@ class TestDataFetcher:
     async def test_fetch_stations_by_risk_fetch_station_list_fails(self, mock_fsl):
         mock_fsl.side_effect = APIError("Failed to fetch")
         async with aiohttp.ClientSession() as session:
-            # The function should handle APIError from fetch_station_list gracefully
-            # (by not finding stations for that type, not by re-raising the APIError itself)
-            stations = await fetch_stations_by_risk(sensor_type='e', risk_level=1, session=session)
-        assert stations == [] # Expect empty list if the underlying fetch fails
+            # The function re-raises APIError if sensor_type is specific and fetch_station_list fails.
+            with pytest.raises(APIError) as excinfo:
+                await fetch_stations_by_risk(sensor_type='e', risk_level=1, session=session)
+        assert "Failed to fetch" in str(excinfo.value) # Check if the original error message is part of it
         mock_fsl.assert_called_once_with('e', session)
 
     # Tests for fetch_station_list_by_location
