@@ -1,4 +1,4 @@
-name: CHJ SAIH (Sistema Automático de Información Hidrológica de la Confederación Hidrográfica del Júcar)
+name: Test Python Package
 
 on:
   push:
