@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 aiohttp = "<4.0,>=3.8"
+geopy = "*"
 
 [dev-packages]
 ipdb = "*"
