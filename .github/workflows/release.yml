@@ -35,8 +35,13 @@ jobs:
       - name: Bump version
         id: bump_version
         run: |
-          python scripts/bump_version.py ${{ github.event.inputs.release_type }}
-          echo "new_version=$(python setup.py --version)" >> $GITHUB_OUTPUT
+          new_version_val=$(python scripts/bump_version.py ${{ github.event.inputs.release_type }})
+          echo "Calculated new version: $new_version_val" # For logging
+          echo "new_version=$new_version_val" >> $GITHUB_OUTPUT
+
+      - name: Debug version output
+        run: |
+          echo "Version from bump_version step output: ${{ steps.bump_version.outputs.new_version }}"
 
       - name: Commit version bump
         run: |
@@ -47,7 +52,7 @@ jobs:
           git push
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2 # Updated from @v1 to @v2
         with:
           tag_name: v${{ steps.bump_version.outputs.new_version }} # Prepend 'v' to tag to match common practice
           name: Release v${{ steps.bump_version.outputs.new_version }}
