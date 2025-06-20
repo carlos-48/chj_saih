@@ -11,7 +11,7 @@ def bump_version(release_type):
         print(f"Error: {setup_py_path} not found.")
         sys.exit(1)
 
-    version_regex = r"version\s*=\s*["'](\d+)\.(\d+)\.(\d+)["']"
+    version_regex = r"version\s*=\s*(?:'|\")(\d+)\.(\d+)\.(\d+)(?:'|\")"
     match = re.search(version_regex, content)
 
     if not match:
@@ -44,7 +44,7 @@ def bump_version(release_type):
     # This regex finds the version assignment line, capturing the part before the version string
     # and the part after it, to reconstruct the line with the new version.
     # It specifically looks for version="X.Y.Z" or version='X.Y.Z'
-    old_version_line_pattern = re.compile(r"(version\s*=\s*["'])"+r"\d+\.\d+\.\d+"+r"(["'])")
+    old_version_line_pattern = re.compile(r"(version\s*=\s*(?:'|\"))\d+\.\d+\.\d+((?:'|\"))")
 
     # Replace the version number part of the matched line
     # The replacement function uses the captured groups (quote characters) to reconstruct the line
