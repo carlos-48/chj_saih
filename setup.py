@@ -16,7 +16,7 @@ setup(
         "Programming Language :: Python :: 3"
     ],
     packages=find_packages(),
-    install_requires=["aiohttp>=3.8,<4.0", "geopy"],
+    install_requires=["aiohttp>=3.8,<4.0", "geopy", "pyproj"],
     entry_points={
         "console_scripts": [
             "chj_saih-cli = cli:main"

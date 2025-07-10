@@ -16,11 +16,16 @@ from chj_saih.config import API_URL, BASE_URL_STATION_LIST # For info if needed,
 
 # Helper function to check station structure (can be expanded)
 def check_station_structure(station: Dict[str, Any]):
-    assert "id" in station
-    assert "nombre" in station
-    assert "latitud" in station
-    assert "longitud" in station
-    assert "variable" in station # Important for fetching sensor data
+    assert "id" in station, f"Station missing 'id': {station}"
+    assert "nombre" in station, f"Station missing 'nombre': {station}"
+    # The direct 'latitud' and 'longitud' might be UTM or WGS84 depending on processing stage.
+    # For now, just check they exist. Further checks could validate CRS or value ranges.
+    assert "latitud" in station or "latitud_utm" in station, f"Station missing latitude: {station}"
+    assert "longitud" in station or "longitud_utm" in station, f"Station missing longitude: {station}"
+    # 'variable' (single ID) or 'variable_ids' (dict for reservoirs)
+    assert "variable" in station or "variable_ids" in station, f"Station missing 'variable' or 'variable_ids': {station}"
+    if "crs" in station: # If CRS is specified, it should be EPSG:25830 for now
+        assert station["crs"] == "EPSG:25830", f"Station CRS is not EPSG:25830: {station}"
 
 @pytest.mark.live
 @pytest.mark.asyncio
@@ -70,12 +75,22 @@ async def test_fetch_sample_sensor_data_live(sensor_type_char, sensor_class, dat
             station_variable = target_station.get("variable")
             station_name = target_station.get("nombre")
 
-            assert station_variable, f"Station '{station_name}' for type '{sensor_type_char}' has no 'variable' field."
+            assert station_variable, f"Station '{station_name}' for type '{sensor_type_char}' has no 'variable' or valid 'variable_ids' field."
 
-            sensor = sensor_class(variable=station_variable, period_grouping="ultimodia", num_values=5)
+            # For ReservoirSensor, we need to pass the whole station_info
+            if sensor_class == ReservoirSensor:
+                sensor = sensor_class(variable=target_station["id"], # Use main station ID
+                                      period_grouping="ultimodia",
+                                      num_values=1, # Fetch for 1 day (which means 24 hourly values typically)
+                                      station_info=target_station)
+            else:
+                sensor = sensor_class(variable=station_variable,
+                                      period_grouping="ultimodia",
+                                      num_values=24) # Fetch 24 hourly values for "ultimodia"
+
             data = await sensor.get_data(session)
 
-            assert data is not None, f"Sensor data for '{station_name}' ({station_variable}) should not be None"
+            assert data is not None, f"Sensor data for '{station_name}' ({station_variable or target_station.get('id')}) should not be None"
             assert data_key_name in data, f"'{data_key_name}' not in sensor data for '{station_name}'"
             assert isinstance(data[data_key_name], list), f"'{data_key_name}' should be a list for '{station_name}'"
 
