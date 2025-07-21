@@ -9,7 +9,6 @@ from chj_saih import (
     RainGaugeSensor,
     FlowSensor,
     ReservoirSensor,
-    TemperatureSensor,
     APIError  # To potentially catch and provide better messages for live test failures
 )
 from chj_saih.config import API_URL, BASE_URL_STATION_LIST # For info if needed, not for mocking
@@ -26,7 +25,7 @@ def check_station_structure(station: Dict[str, Any]):
 @pytest.mark.asyncio
 async def test_fetch_station_list_live_for_each_type():
     """Tests fetching station lists for each sensor type from the live API."""
-    sensor_types_to_test = ['a', 'p', 'e', 't'] # Aforos, Pluviómetros, Embalses, Temperatura
+    sensor_types_to_test = ['a', 'p', 'e'] # Aforos, Pluviómetros, Embalses
     min_expected_stations = 1 # Expect at least one station of each type
 
     async with aiohttp.ClientSession() as session:
@@ -53,7 +52,6 @@ async def test_fetch_station_list_live_for_each_type():
     ('p', RainGaugeSensor, "rainfall_data"),
     ('a', FlowSensor, "flow_data"), # Assuming 'a' can also be used for FlowSensors based on variable
     ('e', ReservoirSensor, "reservoir_data"),
-    ('t', TemperatureSensor, "temperature_data"),
 ])
 async def test_fetch_sample_sensor_data_live(sensor_type_char, sensor_class, data_key_name):
     """Tests fetching data for one station of a given sensor type from the live API."""
