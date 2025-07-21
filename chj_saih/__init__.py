@@ -14,7 +14,7 @@ Main components:
 - `config.py`: Stores API base URLs.
 """
 
-from .sensors import RainGaugeSensor, FlowSensor, ReservoirSensor, TemperatureSensor
+from .sensors import RainGaugeSensor, FlowSensor, ReservoirSensor
 from .data_fetcher import (
     fetch_sensor_data,
     fetch_station_list,
@@ -29,7 +29,6 @@ __all__ = [
     "RainGaugeSensor",
     "FlowSensor",
     "ReservoirSensor",
-    "TemperatureSensor",
     "fetch_sensor_data",
     "fetch_station_list",
     "fetch_all_stations",

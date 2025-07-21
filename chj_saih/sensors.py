@@ -257,24 +257,3 @@ class ReservoirSensor(Sensor):
         parser = SensorDataParser(raw_data)
         values = parser.extract_data(self.period_grouping)
         return {"reservoir_data": values}
-
-class TemperatureSensor(Sensor):
-    """Sensor for measuring environmental temperature."""
-
-    def parse_data(self, raw_data: RawSensorDataType) -> Dict[str, List[Tuple[datetime, Optional[float]]]]:
-        """
-        Parses raw data for a temperature sensor.
-
-        Args:
-            raw_data: The raw data list from the API.
-
-        Returns:
-            A dictionary with "temperature_data": list of (datetime, temperature_value) tuples.
-            Temperature value is typically in °C.
-
-        Raises:
-            DataParseError: If raw_data is malformed or values cannot be parsed.
-        """
-        parser = SensorDataParser(raw_data)
-        values = parser.extract_data(self.period_grouping)
-        return {"temperature_data": values}
