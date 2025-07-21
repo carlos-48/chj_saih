@@ -5,8 +5,8 @@ This module stores base URLs for the Confederación Hidrográfica del Júcar (CH
 Sistema Automático de Información Hidrológica (SAIH) API endpoints.
 """
 
-API_URL = "https://saih.chj.es/api/v1/datos/grafica"
+API_URL = "https://saih.chj.es/api/v1/datos/grafica/"
 """Base URL for fetching sensor statistical data."""
 
-BASE_URL_STATION_LIST = "https://saih.chj.es/api/v1/geoserver/{sensor_type}/ows?service=WFS&request=GetFeature&typeName={sensor_type}&outputFormat=application/json"
+BASE_URL_STATION_LIST = "https://saih.chj.es/api/v1/estaciones/"
 """Base URL for fetching lists of monitoring stations."""
