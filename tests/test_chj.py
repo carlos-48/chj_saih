@@ -3,7 +3,7 @@ import aiohttp
 from unittest.mock import AsyncMock, patch, MagicMock, call
 import datetime
 from chj_saih.exceptions import APIError, InvalidInputError
-from chj_saih.sensors import RainGaugeSensor, FlowSensor, ReservoirSensor, TemperatureSensor
+from chj_saih.sensors import RainGaugeSensor, FlowSensor, ReservoirSensor
 from chj_saih.data_fetcher import (
     fetch_station_list,
     fetch_all_stations,
@@ -23,7 +23,6 @@ class TestSensors:
             "rain": "XX.PREC_ACUM.TEST",
             "flow": "XX.CAUDAL.TEST",
             "reservoir": "XX.VOLUMEN.TEST",
-            "temperature": "XX.TMAX_MAX.TEST"
         }
         if sensor_type in test_variables:
             return test_variables[sensor_type]
@@ -47,7 +46,6 @@ class TestSensors:
             "rain": RainGaugeSensor,
             "flow": FlowSensor,
             "reservoir": ReservoirSensor,
-            "temperature": TemperatureSensor
         }
         period_groupings = [
             "ultimos5minutales",
@@ -107,15 +105,6 @@ class TestSensors:
                             assert len(data["reservoir_data"][0]) == 2
                             assert isinstance(data["reservoir_data"][0][0], datetime.datetime)
                             assert isinstance(data["reservoir_data"][0][1], (float, int, type(None)))
-                    elif sensor_type == "temperature":
-                        assert "temperature_data" in data
-                        assert isinstance(data["temperature_data"], list)
-                        if data["temperature_data"]:
-                            assert isinstance(data["temperature_data"][0], tuple)
-                            assert len(data["temperature_data"][0]) == 2
-                            assert isinstance(data["temperature_data"][0][0], datetime.datetime)
-                            assert isinstance(data["temperature_data"][0][1], (float, int, type(None)))
-
             # Verify mock_fetch_sensor_data_func was called for each combination
             assert mock_fetch_sensor_data_func.call_count == len(sensors) * len(period_groupings)
 
@@ -192,8 +181,6 @@ class TestDataFetcher:
                 return [{"id": "S03", "nombre": "Station C", "variable": "varC"}]
             elif sensor_type == 'e': # Embalses
                 return [{"id": "S02", "nombre": "Station B", "variable": "varB"}]
-            elif sensor_type == 't': # Temperatura
-                return [{"id": "S04", "nombre": "Station D", "variable": "varD"}]
             return []
 
         mock_fetch_station_list.side_effect = side_effect_fetch_station_list
@@ -202,12 +189,11 @@ class TestDataFetcher:
             stations = await fetch_all_stations(session=session)
 
         assert stations is not None
-        assert len(stations) == 4
+        assert len(stations) == 3
         # Results should be sorted by 'nombre'
         assert stations[0]["nombre"] == "Station A"
         assert stations[1]["nombre"] == "Station B"
         assert stations[2]["nombre"] == "Station C"
-        assert stations[3]["nombre"] == "Station D"
 
         # Assert that fetch_station_list was called for each sensor type
         expected_calls = [call('a', session), call('t', session), call('e', session), call('p', session)]
@@ -560,13 +546,13 @@ class TestDataFetcher:
         # mock_session_get_method.assert_has_calls(expected_urls, any_order=False) # Replaced with below
         assert mock_session_get_method.call_count == 4
         actual_urls_called = [c.args[0] for c in mock_session_get_method.call_args_list] # Use .args
-        assert actual_urls_called == [ec.args[0] for ec in expected_calls] # Corrected variable name
+        assert actual_urls_called == [ec.args[0] for ec in expected_urls] # Corrected variable name
 
     async def test_fetch_stations_by_subcuenca_invalid_sensor_type(self):
         async with aiohttp.ClientSession() as session:
             with pytest.raises(InvalidInputError) as excinfo:
                 await fetch_stations_by_subcuenca(subcuenca_id=1, sensor_type="invalid", session=session)
-        assert "Invalid sensor_type. Use 't', 'a', 'p', 'e', or 'all'." in str(excinfo.value)
+        assert "Invalid sensor_type. Use 'a', 'p', 'e', or 'all'." in str(excinfo.value)
 
     @patch('aiohttp.ClientSession.get', new_callable=AsyncMock) # Was MagicMock
     async def test_fetch_stations_by_subcuenca_api_error(self, mock_session_get_method): # mock_session_get_method is session.get
@@ -576,7 +562,7 @@ class TestDataFetcher:
         mock_response_content.json = AsyncMock()
 
         async_context_manager = AsyncMock() # This is the async context manager
-        async_context_manager.__aenter__.return_value = mock_response_content
+        async_context_manager.__aenter__ = AsyncMock(return_value=mock_response_content)
         async_context_manager.__aexit__ = AsyncMock(return_value=None)
         mock_session_get_method.return_value = async_context_manager
 
