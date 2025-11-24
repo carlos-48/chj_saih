@@ -22,7 +22,7 @@ jobs:
       issues: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Fetch all history for release note generation
           token: ${{ secrets.PAT_FOR_COMMIT }} # Use PAT if pushing commits
